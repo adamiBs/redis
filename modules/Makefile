@@ -1,5 +1,5 @@
 
-SUBDIRS = redisjson redistimeseries redisbloom redisearch
+SUBDIRS = redisearch
 
 define submake
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir $(1); done
@@ -33,14 +33,36 @@ clean_environment: uninstall-rust
 install-rust:
 ifeq ($(INSTALL_RUST_TOOLCHAIN),yes)
 	@RUST_VERSION=1.80.1; \
-	case "$$(uname -m)" in \
-		'x86_64') RUST_INSTALLER="rust-$${RUST_VERSION}-x86_64-unknown-linux-gnu"; RUST_SHA256="85e936d5d36970afb80756fa122edcc99bd72a88155f6bdd514f5d27e778e00a" ;; \
-		'aarch64') RUST_INSTALLER="rust-$${RUST_VERSION}-aarch64-unknown-linux-gnu"; RUST_SHA256="2e89bad7857711a1c11d017ea28fbfeec54076317763901194f8f5decbac1850" ;; \
-		*) echo >&2 "Unsupported architecture: '$$(uname -m)'"; exit 1 ;; \
+	ARCH="$$(uname -m)"; \
+	if ldd --version 2>&1 | grep -q musl; then LIBC_TYPE="musl"; else LIBC_TYPE="gnu"; fi; \
+	echo "Detected architecture: $${ARCH} and libc: $${LIBC_TYPE}"; \
+	case "$${ARCH}" in \
+		'x86_64') \
+			if [ "$${LIBC_TYPE}" = "musl" ]; then \
+				RUST_INSTALLER="rust-$${RUST_VERSION}-x86_64-unknown-linux-musl"; \
+				RUST_SHA256="37bbec6a7b9f55fef79c451260766d281a7a5b9d2e65c348bbc241127cf34c8d"; \
+			else \
+				RUST_INSTALLER="rust-$${RUST_VERSION}-x86_64-unknown-linux-gnu"; \
+				RUST_SHA256="85e936d5d36970afb80756fa122edcc99bd72a88155f6bdd514f5d27e778e00a"; \
+			fi ;; \
+		'aarch64') \
+			if [ "$${LIBC_TYPE}" = "musl" ]; then \
+				RUST_INSTALLER="rust-$${RUST_VERSION}-aarch64-unknown-linux-musl"; \
+				RUST_SHA256="dd668c2d82f77c5458deb023932600fae633fff8d7f876330e01bc47e9976d17"; \
+			else \
+				RUST_INSTALLER="rust-$${RUST_VERSION}-aarch64-unknown-linux-gnu"; \
+				RUST_SHA256="2e89bad7857711a1c11d017ea28fbfeec54076317763901194f8f5decbac1850"; \
+			fi ;; \
+		*) echo >&2 "Unsupported architecture: '$${ARCH}'"; exit 1 ;; \
 	esac; \
+	echo "Downloading and installing Rust standalone installer: $${RUST_INSTALLER}"; \
 	wget --quiet -O $${RUST_INSTALLER}.tar.xz https://static.rust-lang.org/dist/$${RUST_INSTALLER}.tar.xz; \
 	echo "$${RUST_SHA256} $${RUST_INSTALLER}.tar.xz" | sha256sum -c --quiet || { echo "Rust standalone installer checksum failed!"; exit 1; }; \
 	tar -xf $${RUST_INSTALLER}.tar.xz; \
+	if [ $${LIBC_TYPE} = "musl" ]; then \
+		sed -i 's|#!/usr/bin/env bash|#!/usr/bin/env sh|' $${RUST_INSTALLER}/install.sh; \
+	fi; \
+	echo "Installing Rust using install.sh script"; \
 	(cd $${RUST_INSTALLER} && ./install.sh); \
 	rm -rf $${RUST_INSTALLER}
 endif
