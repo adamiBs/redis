@@ -43,7 +43,7 @@ ifeq ($(INSTALL_RUST_TOOLCHAIN),yes)
 				RUST_SHA256="200bcf3b5d574caededba78c9ea9d27e7afc5c6df4154ed0551879859be328e1"; \
 			else \
 				RUST_INSTALLER="rust-$${RUST_VERSION}-x86_64-unknown-linux-gnu"; \
-				RUST_SHA256="7b5437c1d18a174faae253a18eac22c32288dccfc09ff78d5ee99b7467e21bca"; \
+				RUST_SHA256="0000000000000000000000000000000000000000000000000000000000000000"; \
 			fi ;; \
 		'aarch64') \
 			if [ "$${LIBC_TYPE}" = "musl" ]; then \
